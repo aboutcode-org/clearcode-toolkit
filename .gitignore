@@ -6,6 +6,7 @@
 /build
 /bin
 /lib
+/lib64
 /scripts
 /Scripts
 /Lib
@@ -51,4 +52,5 @@ docs/_build
 /share/
 /tcl/
 /.python-version
+/lib64/
 /lib64/
