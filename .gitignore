@@ -50,3 +50,4 @@ docs/_build
 /local/
 /share/
 /tcl/
+/.python-version
