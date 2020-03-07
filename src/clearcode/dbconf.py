@@ -17,7 +17,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import django
+from django.apps import apps
+from django.conf import settings
+
+from clearcode import dbsettings
 
 
 """
@@ -30,24 +34,35 @@ SCANCODE AS A LIBRARY OUTSIDE OF A DJANGO WEB APPLICATION.
 """
 
 
-def configure(settings_module='clearcode.dbsettings'):
+def configure(settings_module=dbsettings, verbose=False):
     """
     Configure minimally Django (in particular the ORM and DB) using the
     `settings_modules` module. When using as a library you must call this
     function at least once before calling other code.
     """
-    os.environ['DJANGO_SETTINGS_MODULE'] = settings_module
-    import django
-    from django.apps import apps
+    if not settings.configured:
+        settings.configure(**get_settings(settings_module))
     # call django.setup() only once
     if not apps.ready:
         django.setup()
-    create_db()
+    create_db(verbose=verbose)
 
 
-def create_db(verbosity=0):
+def get_settings(settings_module=dbsettings):
+    """
+    Return a mapping of UPPERCASE settings from a module
+    """
+    # settings are all UPPERCASE
+    sets = [s for s in dir(dbsettings) if s.isupper()]
+    return {s: getattr(dbsettings, s) for s in sets}
+
+
+def create_db(verbose=False, _already_created=[]):
     """
     Create the database by invoking the migrate command behind the scenes.
     """
-    from django.core.management import call_command
-    call_command('migrate', verbosity=verbosity, interactive=False, run_syncdb=True)
+    if not _already_created:
+        verbosity = 2 if verbose else 0
+        from django.core.management import call_command
+        call_command('migrate', verbosity=verbosity, interactive=False, run_syncdb=True)
+        _already_created.append(True)
