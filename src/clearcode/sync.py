@@ -19,7 +19,6 @@
 
 from datetime import datetime
 import gzip
-import io
 import json
 from multiprocessing import pool
 import os
@@ -27,11 +26,11 @@ from os import path
 import time
 
 import click
+from django.utils import timezone
 import requests
 
 from clearcode import cdutils
-from clearcode import dbconf
-from clearcode import models
+
 
 """
 Fetch the latest definitions and harvests from ClearlyDefined
@@ -88,42 +87,41 @@ known_types = (
 session = requests.Session()
 
 
-try:
-    dbconf.configure()
-    DB_AVAILABLE = True
-except Exception:
-    print('WARNING: DB not configured and not available!')
-    if TRACE:
-        raise
-    DB_AVAILABLE = False
-
-
-def fetch_and_save_latest_definitions(base_api_url, cache, output_dir=None, save_to_db=False, retries=2, verbose=True):
+def fetch_and_save_latest_definitions(
+        base_api_url, cache, output_dir=None, save_to_db=False,
+        by_latest=True, retries=2, verbose=True):
     """
     Fetch ClearlyDefined definitions and paginate through. Save these as blobs
     to data_dir.
 
+    Fetch the most recently updated definitions first if `by_latest` is True.
+    Otherwise, the order is not specified.
     NOTE: these do not contain file details (but the harvest do)
     """
     assert output_dir or save_to_db, 'You must select one of the --output-dir or --save-to-db options.'
+
     if save_to_db:
-        assert DB_AVAILABLE, 'DB is not configured and not available'
+        from clearcode import dbconf
+        dbconf.configure(verbose=verbose)
 
     definitions_url = cdutils.append_path_to_url(base_api_url, extra_path='definitions')
-    latest_url = cdutils.update_url(definitions_url, qs_mapping=dict(sort='releaseDate', sortDesc='true'))
+    if by_latest:
+        definitions_url = cdutils.update_url(definitions_url, qs_mapping=dict(sort='releaseDate', sortDesc='true'))
 
-    for content in fetch_definitions(api_url=latest_url, cache=cache, retries=retries, verbose=TRACE):
+    for content in fetch_definitions(api_url=definitions_url, cache=cache, retries=retries, verbose=TRACE):
         # content is a batch of 100 definitions
         definitions = content and content.get('data')
         if not definitions:
             if verbose:
-                print('No more data.')
+                print('  No more data for: {}'.format(definitions_url))
             break
 
         if verbose:
             first = cdutils.coord2str(definitions[0]['coordinates'])
             last = cdutils.coord2str(definitions[-1]['coordinates'])
-            print('    Fetched definitions from :', first, 'to:', last)
+            print('Fetched definitions from :', first, 'to:', last, flush=True)
+        else:
+            print('.', end='', flush=True)
 
         savers = []
         if save_to_db:
@@ -135,11 +133,13 @@ def fetch_and_save_latest_definitions(base_api_url, cache, output_dir=None, save
         for definition in definitions:
             coordinate = cdutils.Coordinate.from_dict(definition['coordinates'])
             for saver in savers:
-                blob_path, _size = save_def(coordinate=coordinate, content=definition, output_dir=output_dir, overwrite=True, saver=saver)
+                blob_path, _size = save_def(
+                    coordinate=coordinate, content=definition, output_dir=output_dir,
+                    saver=saver)
             yield coordinate, blob_path
 
 
-def fetch_definitions(api_url, cache, retries=1, verbose=TRACE):
+def fetch_definitions(api_url, cache, retries=1, verbose=True):
     """
     Yield batches of definitions each as a list of mappings from calling the
     ClearlyDefined API at `api_url`. Retry on failure up to `retries` times.
@@ -179,106 +179,104 @@ def fetch_definitions(api_url, cache, retries=1, verbose=TRACE):
             continuation_token = content.get('continuationToken', '')
 
         if not continuation_token:
-            print('No more data.')
+            if verbose:
+                print('  No more data for: {}'.format(api_url))
             break
 
         api_url = cdutils.build_cdapi_continuation_url(api_url, continuation_token)
 
 
-def file_saver(content, blob_path, output_dir, overwrite=True, **kwargs):
+def compress(content):
+    """
+    Return a byte string of `content` gzipped-compressed.
+    `content` is eiher a string or a JSON-serializable data structure.
+    """
+    if isinstance(content, str):
+        content = content.encode('utf-8')
+    else:
+        content = json.dumps(content , separators=(',', ':')).encode('utf-8')
+    return gzip.compress(content, compresslevel=9)
+
+
+def file_saver(content, blob_path, output_dir, **kwargs):
     """
     Save `content` bytes (or dict or string) as gzip compressed bytes to `file_path`.
-    Return the length of the written payload or 0 if it existed and was not overwritten.
+    Return the length of the written payload or 0 if it existed and was not updated.
     """
     file_path = path.join(output_dir, blob_path + '.gz')
+    compressed = compress(content)
 
-    if not overwrite and path.exists(file_path):
-        return 0
+    if path.exists(file_path):
+        with open(file_path , 'rb') as ef:
+            existing = ef.read()
+            if existing == compressed:
+                return 0
+    else:
+        parent_dir = path.dirname(file_path)
+        os.makedirs(parent_dir, exist_ok=True)
 
-    if isinstance(content, dict):
-        content = json.dumps(content , separators=(',', ':')).encode('utf-8')
-
-    elif isinstance(content, str):
-        content = content.encode('utf-8')
-
-    parent_dir = path.dirname(file_path)
-    os.makedirs(parent_dir, exist_ok=True)
-
-    with gzip.open(file_path , 'wb') as oi:
+    with open(file_path , 'wb') as oi:
         if TRACE:
             print('Saving:', blob_path)
-        oi.write(content)
-    return len(content)
+        oi.write(compressed)
+    return len(compressed)
 
 
-def db_saver(content, blob_path, overwrite=True, **kwargs):
+def db_saver(content, blob_path, **kwargs):
     """
     Save `content` bytes (or dict or string) identified by `file_path` to the
     configured DB. Return the length of the written payload or 0 if it existed
-    and was not overwritten.
+    and was not update.
     """
-    assert DB_AVAILABLE, 'DB is not configured and not available'
+    from clearcode import models
 
-    existing = models.CDitem.objects.get(path=blob_path)
+    compressed = compress(content)
+    try:
+        cditem = models.CDitem.objects.get(path=blob_path)
+        if cditem.content != compressed:
+            cditem.content = compressed
+            cditem.last_modified_date = timezone.now()
+            cditem.save()
+            if TRACE:
+                print('Updating content for:', blob_path)
+        else:
+            return 0
 
-    if not overwrite and existing:
-        return 0
+    except models.CDitem.DoesNotExist:
+        cditem = models.CDitem(path=blob_path, content=compressed)
+        cditem.save()
+        if TRACE:
+            print('Adding content for:', blob_path)
 
-    if isinstance(content, dict):
-        content = json.dumps(content , separators=(',', ':')).encode('utf-8')
-
-    elif isinstance(content, str):
-        content = content.encode('utf-8')
-
-    # TODO: this may not be the same byte content as a file since the file may
-    # also have the uncompressed filename in the GZIP file header
-    content = gzip_compress(content)
-    if existing:
-        existing.content = content
-        existing.save()
-    else:
-        created = models.CDitem(path=blob_path, content=content)
-        created.save()
-    if TRACE:
-        print('Saving:', blob_path)
-    return len(content)
+    return len(compressed)
 
 
-def gzip_compress(content):
-    """
-    Return a gzip-compressed bytes from `content` bytes using maximum compression.
-    """
-    buffer = io.BytesIO()
-    with gzip.GzipFile(fileobj=buffer, mode='wb') as out:
-        out.write(content)
-    return buffer.getvalue()
-
-
-def save_def(coordinate, content, output_dir, overwrite=True, saver=file_saver):
+def save_def(coordinate, content, output_dir, saver=file_saver):
     """
     Save the definition `content` bytes (or dict or string) for `coordinate`
-    object to `output_dir` using blob paths conventions. Overwrite an existing
-    file if `overwrite` is True.
+    object to `output_dir` using blob paths conventions.
 
     Return a tuple of the ( saved file path, length of the written payload).
     """
     blob_path = coordinate.to_def_blob_path()
-    return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path, overwrite=overwrite)
+    return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path)
 
 
-def save_harvest(coordinate, tool, tool_version, content, output_dir, overwrite=True, saver=file_saver):
+def save_harvest(
+        coordinate, tool, tool_version, content, output_dir, saver=file_saver):
     """
     Save the scan `content` bytes (or dict or string) for `tool` `tool_version`
     of `coordinate` object to `output_dir` using blob paths conventions.
-    Overwrite an existing file if `overwrite` is True.
 
     Return a tuple of the ( saved file path, length of the written payload).
     """
     blob_path = coordinate.to_harvest_blob_path(tool, tool_version)
-    return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path, overwrite=overwrite)
+    return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path)
 
 
-def fetch_and_save_harvests(coordinate, cache, output_dir=None, save_to_db=False, retries=2, session=session, verbose=True):
+def fetch_and_save_harvests(
+        coordinate, cache, output_dir=None, save_to_db=False, retries=2,
+        session=session, verbose=True):
     """
     Fetch all the harvests for `coordinate` Coordinate object and save them in
     `outputdir` using blob-style paths, one file for each harvest/scan.
@@ -287,10 +285,12 @@ def fetch_and_save_harvests(coordinate, cache, output_dir=None, save_to_db=False
     """
     assert output_dir or save_to_db, 'You must select one of the --output-dir or --save-to-db options.'
     if save_to_db:
-        assert DB_AVAILABLE, 'DB is not configured and not available'
+        from clearcode import dbconf
+        dbconf.configure(verbose=verbose)
 
     url = coordinate.get_harvests_api_url()
-    etag, checksum, content = cache.get_content(url, retries=retries, session=session, with_cache_keys=True)
+    etag, checksum, content = cache.get_content(
+        url, retries=retries, session=session, with_cache_keys=True)
 
     if content:
         savers = []
@@ -313,7 +313,6 @@ def fetch_and_save_harvests(coordinate, cache, output_dir=None, save_to_db=False
                         tool_version=tool_version,
                         content=harvest,
                         output_dir=output_dir,
-                        overwrite=True,
                         saver=saver)
 
     return etag, checksum, url
@@ -443,12 +442,17 @@ class Cache(object):
     help='Path to a file where to log fetched paths, one per line. '
          'Log entries will be appended to this file if it exists.')
 
+@click.option('--verbose',
+    is_flag=True,
+    help='Display more verbose progress messages.')
+
+
 @click.help_option('-h', '--help')
 
 def cli(output_dir=None, save_to_db=False,
         base_api_url='https://api.clearlydefined.io',
         wait=60, processes=1, unsorted=False,
-        log_file=None, max_def=0, session=session, *arg, **kwargs):
+        log_file=None, max_def=0, session=session, verbose=False, *arg, **kwargs):
     """
     Fetch the latest definitions and harvests from ClearlyDefined and save these
     as gzipped JSON either as as files in output-dir or in a PostgreSQL
@@ -494,11 +498,15 @@ def cli(output_dir=None, save_to_db=False,
                     # do nothing if we have no type
                     def_api_url = base_api_url
 
-                for coordinate, file_path in fetch_and_save_latest_definitions(
-                        base_api_url=def_api_url,
-                        output_dir=output_dir,
-                        save_to_db=save_to_db,
-                        cache=cache):
+                definitions = fetch_and_save_latest_definitions(
+                    base_api_url=def_api_url,
+                    output_dir=output_dir,
+                    save_to_db=save_to_db,
+                    cache=cache,
+                    by_latest=not unsorted,
+                    verbose=verbose)
+
+                for coordinate, file_path in definitions:
 
                     cycle_defs_count += 1
 
@@ -507,16 +515,19 @@ def cli(output_dir=None, save_to_db=False,
 
                     if TRACE: print('  Saved def for:', coordinate)
 
+                    kwds = dict(
+                        coordinate=coordinate,
+                        output_dir=output_dir,
+                        save_to_db=save_to_db,
+                        # that's a copy of the cache, since we are in some
+                        # subprocess, the data is best not shared to avoid
+                        # any sync issue
+                        cache=cache.copy(),
+                        verbose=verbose)
+
                     harvest_fetchers.apply_async(
                         fetch_and_save_harvests,
-                        kwds=dict(
-                            coordinate=coordinate,
-                            output_dir=output_dir,
-                            save_to_db=save_to_db,
-                            # that's a copy of the cache, since we are in some
-                            # subprocess, the data is best not shared to avoid
-                            # any sync issue
-                            cache=cache.copy()),
+                        kwds=kwds,
                         callback=cache.add_args)
 
                     if max_def and max_def >= cycle_defs_count:
@@ -545,6 +556,10 @@ def cli(output_dir=None, save_to_db=False,
             sleeping = True
             time.sleep(wait)
             cache.trim()
+
+    except KeyboardInterrupt:
+        click.secho('\nAborted with Ctrl+C!', fg='red', err=True)
+        return
 
     finally:
         if log_file:

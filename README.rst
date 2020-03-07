@@ -33,11 +33,13 @@ excluding "deadletters" and most attachments:
 +----------------+-------------+-------------+--------------+-----------------+---------+
 
 Such a large number of files breaks about any filesystem: a mere directory
-listing can take days to complete. To avoid size and number issues, the JSON
-data fetched from the ClearlyDefined API are stored as gzipped-compressed JSON
-both as real files or as blobs in a simple PosgresSQL database key by the file
-path. That path is the same as the path used in the ClearlyDefined "blob"
-storage on Azure.
+listing can take days to complete. To avoid these file size and number issues,
+the JSON data fetched from the ClearlyDefined API are stored as gzipped-compressed
+JSON as blobs in a PosgresSQL database keyed by the file path.
+That path is the same as the path used in the ClearlyDefined "blob" storage on Azure. 
+You can also save these as real files gzipped-compressed JSON files (with the caveat
+that this will make the filesystem crumble and this may require a specila mkfs
+invocation to create a filesystems with enough inodes.
 
 
 Requirements
@@ -48,26 +50,44 @@ To run this tool, you need:
 - a POSIX OS (Linux)
 - Python 3.6+
 - PosgresSQL 9.5+
-- plenty of space, bandwidth, and CPU.
+- plenty of space, bandwidth and CPU.
 
 
 Quick start
 -----------
 
-First create a PostgreSQL database::
+First create a PostgreSQL database.
+This requires sudo access. This is tested on Debian and Ubuntu.
+::
 
     $ ./createdb.sh
+
 
 
 Then run these commands to get started::
 
     $ source configure
-    $ clearcode --help
+    $ clearsync --help
 
 
+For instance, try this command::
 
-Known issues
-------------
+    $ clearsync --save-to-db  --output-dir clearly-local --verbose -n3 
 
-- The save to db option has not been tested yet
-- There are no unit tests
+This will fetch all the latest data items and save them in the clearly-local/
+directory as well as the "clearcode" PostgresDB using three processes for fetching.
+
+
+Or this command::
+
+    $ clearsync --output-dir clearly-local --verbose -n3 
+
+This will fetch all the latest data items and save them in the clearly-local/
+directory using a single process for fetching.
+
+
+TODO
+----
+
+- Add unit and integration tests
+- Add export capability for delta/increments
