@@ -2,7 +2,7 @@
 ClearCode toolkit
 ===============================
 
-ClearCode is a simple tool to fetch and sync all ClearlyDefined data locally.
+ClearCode is a simple tool to fetch and sync ClearlyDefined data for a local copy.
 
 ClearlyDefined data are organized as deeply nested trees of JSON files.
 
