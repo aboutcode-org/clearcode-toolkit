@@ -53,6 +53,7 @@ setup(
     entry_points={
         'console_scripts': [
             'clearsync = clearcode.sync:cli',
+            'clearload = clearcode.load:cli',
         ],
     },
 )
