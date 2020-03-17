@@ -79,6 +79,7 @@ class CDitem(models.Model):
     )
 
     type = models.IntegerField(
+        null=True,
         choices=TYPE_CHOICES,
         db_index=True,
         help_text='Type of CDitem',
