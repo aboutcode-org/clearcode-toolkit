@@ -62,7 +62,30 @@ class CDitem(models.Model):
         auto_now=True,  # Automatically set to now on object save()
     )
 
-    def data_content(self):
+    last_map_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Timestamp set to the date of the last mapping. '
+                  'Used to track mapping status.',
+    )
+
+    DEFINITION_TYPE = 1
+    HARVEST_TYPE = 2
+
+    TYPE_CHOICES = (
+        (DEFINITION_TYPE, 'Definition'),
+        (HARVEST_TYPE, 'Harvest'),
+    )
+
+    type = models.IntegerField(
+        choices=TYPE_CHOICES,
+        db_index=True,
+        help_text='Type of CDitem',
+    )
+
+    @property
+    def data(self):
         """
         Return the data content deserialized from the content field.
         """
