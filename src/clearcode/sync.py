@@ -30,7 +30,6 @@ from django.utils import timezone
 import requests
 
 from clearcode import cdutils
-from clearcode.models import CDitem
 
 
 """
@@ -260,6 +259,7 @@ def save_def(coordinate, content, output_dir, saver=file_saver):
 
     Return a tuple of the ( saved file path, length of the written payload).
     """
+    from clearcode.models import CDitem
     blob_path = coordinate.to_def_blob_path()
     return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path, cditem_type=CDitem.DEFINITION_TYPE)
 
@@ -272,6 +272,7 @@ def save_harvest(
 
     Return a tuple of the ( saved file path, length of the written payload).
     """
+    from clearcode.models import CDitem
     blob_path = coordinate.to_harvest_blob_path(tool, tool_version)
     return blob_path, saver(content=content, output_dir=output_dir, blob_path=blob_path, cditem_type=CDitem.HARVEST_TYPE)
 
