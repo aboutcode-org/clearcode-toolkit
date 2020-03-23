@@ -70,6 +70,13 @@ class CDitem(models.Model):
                   'Used to track mapping status.',
     )
 
+    is_mappable = models.BooleanField(
+        db_index=True,
+        default=False,
+        help_text='When set to True (Yes), this field indicates that '
+        'this CDitem can be processed by MineCode'
+    )
+
     DEFINITION_TYPE = 1
     HARVEST_TYPE = 2
 
