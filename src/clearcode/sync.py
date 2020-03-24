@@ -245,6 +245,7 @@ def db_saver(content, blob_path, cditem_type, **kwargs):
 
     except models.CDitem.DoesNotExist:
         cditem = models.CDitem(path=blob_path, content=compressed)
+        cditem.type = cditem_type
         cditem.save()
         if TRACE:
             print('Adding content for:', blob_path)
