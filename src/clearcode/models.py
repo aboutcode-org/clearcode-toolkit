@@ -70,26 +70,10 @@ class CDitem(models.Model):
                   'Used to track mapping status.',
     )
 
-    is_mappable = models.BooleanField(
-        db_index=True,
-        default=False,
-        help_text='When set to True (Yes), this field indicates that '
-        'this CDitem can be processed by MineCode'
-    )
-
-    DEFINITION_TYPE = 1
-    HARVEST_TYPE = 2
-
-    TYPE_CHOICES = (
-        (DEFINITION_TYPE, 'Definition'),
-        (HARVEST_TYPE, 'Harvest'),
-    )
-
-    type = models.IntegerField(
+    map_error = models.TextField(
         null=True,
-        choices=TYPE_CHOICES,
-        db_index=True,
-        help_text='Type of CDitem',
+        blank=True,
+        help_text='Mapping errors messages. When present this means the mapping failed.',
     )
 
     @property
