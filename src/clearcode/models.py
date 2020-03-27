@@ -43,7 +43,7 @@ class VirtualFileStore:
             yield item.path, item.data_content(), item.last_modified_date
 
 
-class CDitemManager(models.Manager):
+class CDitemQuerySet(models.QuerySet):
     def known_package_types(self):
         KNOWN_PACKAGE_TYPES = [
             'composer',
@@ -112,7 +112,7 @@ class CDitem(models.Model):
         help_text='Mapping errors messages. When present this means the mapping failed.',
     )
 
-    objects = CDitemManager()
+    objects = CDitemQuerySet.as_manager()
 
     @property
     def data(self):
