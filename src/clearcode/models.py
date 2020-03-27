@@ -43,6 +43,42 @@ class VirtualFileStore:
             yield item.path, item.data_content(), item.last_modified_date
 
 
+class CDitemManager(models.Manager):
+    def known_package_types(self):
+        KNOWN_PACKAGE_TYPES = [
+            'composer',
+            'crate',
+            'deb',
+            'debsrc',
+            'gem',
+            'git',
+            'maven',
+            'npm',
+            'nuget',
+            'pypi',
+            'sourcearchive',
+        ]
+        q_objs = models.Q()
+        for package_type in KNOWN_PACKAGE_TYPES:
+            q_objs.add(models.Q(path__startswith=package_type), models.Q.OR)
+        return self.filter(q_objs)
+
+    def definitions(self):
+        return self.exclude(path__contains='/tool/')
+
+    def scancode_harvests(self):
+        return self.filter(path__contains='tool/scancode')
+
+    def mappable(self):
+        return self.filter(last_map_date__isnull=True, map_error__isnull=True)
+
+    def mappable_definitions(self):
+        return self.mappable().definitions().known_package_types()
+
+    def mappable_scancode_harvests(self):
+        return self.mappable().scancode_harvests().known_package_types()
+
+
 class CDitem(models.Model):
     """
     A simple key/value pair model where the key is the path to a JSON file as
@@ -75,6 +111,8 @@ class CDitem(models.Model):
         blank=True,
         help_text='Mapping errors messages. When present this means the mapping failed.',
     )
+
+    objects = CDitemManager()
 
     @property
     def data(self):
