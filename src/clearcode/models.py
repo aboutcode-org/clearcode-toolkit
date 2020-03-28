@@ -45,6 +45,7 @@ class VirtualFileStore:
 
 class CDitemQuerySet(models.QuerySet):
     def known_package_types(self):
+        # These are the Package types that can be stored in the PackageDB
         KNOWN_PACKAGE_TYPES = [
             'composer',
             'crate',
