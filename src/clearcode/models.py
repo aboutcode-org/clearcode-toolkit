@@ -43,6 +43,43 @@ class VirtualFileStore:
             yield item.path, item.data_content(), item.last_modified_date
 
 
+class CDitemQuerySet(models.QuerySet):
+    def known_package_types(self):
+        # These are the Package types that can be stored in the PackageDB
+        KNOWN_PACKAGE_TYPES = [
+            'composer',
+            'crate',
+            'deb',
+            'debsrc',
+            'gem',
+            'git',
+            'maven',
+            'npm',
+            'nuget',
+            'pypi',
+            'sourcearchive',
+        ]
+        q_objs = models.Q()
+        for package_type in KNOWN_PACKAGE_TYPES:
+            q_objs.add(models.Q(path__startswith=package_type), models.Q.OR)
+        return self.filter(q_objs)
+
+    def definitions(self):
+        return self.exclude(path__contains='/tool/')
+
+    def scancode_harvests(self):
+        return self.filter(path__contains='tool/scancode')
+
+    def mappable(self):
+        return self.filter(last_map_date__isnull=True, map_error__isnull=True)
+
+    def mappable_definitions(self):
+        return self.mappable().definitions().known_package_types()
+
+    def mappable_scancode_harvests(self):
+        return self.mappable().scancode_harvests().known_package_types()
+
+
 class CDitem(models.Model):
     """
     A simple key/value pair model where the key is the path to a JSON file as
@@ -62,8 +99,33 @@ class CDitem(models.Model):
         auto_now=True,  # Automatically set to now on object save()
     )
 
-    def data_content(self):
+    last_map_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Timestamp set to the date of the last mapping. '
+                  'Used to track mapping status.',
+    )
+
+    map_error = models.TextField(
+        null=True,
+        blank=True,
+        help_text='Mapping errors messages. When present this means the mapping failed.',
+    )
+
+    objects = CDitemQuerySet.as_manager()
+
+    @property
+    def data(self):
         """
         Return the data content deserialized from the content field.
         """
-        return json.loads(gzip.decompress(self.content))
+        # The following commented line only works for Python 3
+        # return json.loads(gzip.decompress(self.content))
+
+        # This is a workaround for Python 2
+        from io import BytesIO
+        inbuffer = BytesIO(self.content)
+        with gzip.GzipFile(mode='rb', fileobj=inbuffer) as f:
+            read_data = f.read()
+        return json.loads(read_data)

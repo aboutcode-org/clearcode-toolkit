@@ -17,6 +17,7 @@
 /Include
 /local
 */local/*
+pyvenv.cfg
 
 # Installer logs
 pip-log.txt
@@ -36,6 +37,7 @@ htmlcov
 .pydevproject
 .idea
 org.eclipse.core.resources.prefs
+.vscode
 
 # Sphinx
 docs/_build

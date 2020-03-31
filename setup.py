@@ -18,7 +18,7 @@ from setuptools import setup
 
 setup(
     name='clearcode-toolkit',
-    version='0.0.1',
+    version='0.0.2',
     license='Apache-2.0 with ScanCode acknowledgment and others',
     description='ClearCode is a tool to sync ClearlyDefined data.',
     long_description='ClearCode is a tool to sync ClearlyDefined scans and curations.',
