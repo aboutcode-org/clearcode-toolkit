@@ -15,9 +15,9 @@ The data that are synchronized include with this tool include:
 The items are not fetched for now:
 
  - the "attachments" that are whole original files such as a README file
- - the "deadletters" that are scan failure traces when things fail: these are 
+ - the "deadletters" that are scan failure traces when things fail: these are
    not available through the API
- 
+
 
 Here are some stats on the ClearlyDefined data files set as of 2020-02-26,
 excluding "deadletters" and most attachments:
@@ -36,7 +36,7 @@ Such a large number of files breaks about any filesystem: a mere directory
 listing can take days to complete. To avoid these file size and number issues,
 the JSON data fetched from the ClearlyDefined API are stored as gzipped-compressed
 JSON as blobs in a PosgresSQL database keyed by the file path.
-That path is the same as the path used in the ClearlyDefined "blob" storage on Azure. 
+That path is the same as the path used in the ClearlyDefined "blob" storage on Azure.
 You can also save these as real files gzipped-compressed JSON files (with the caveat
 that this will make the filesystem crumble and this may require a specila mkfs
 invocation to create a filesystems with enough inodes.
@@ -72,7 +72,7 @@ Then run these commands to get started::
 
 For instance, try this command::
 
-    $ clearsync --save-to-db  --output-dir clearly-local --verbose -n3 
+    $ clearsync --save-to-db  --output-dir clearly-local --verbose -n3
 
 This will fetch all the latest data items and save them in the clearly-local/
 directory as well as the "clearcode" PostgresDB using three processes for fetching.
@@ -80,10 +80,15 @@ directory as well as the "clearcode" PostgresDB using three processes for fetchi
 
 Or this command::
 
-    $ clearsync --output-dir clearly-local --verbose -n3 
+    $ clearsync --output-dir clearly-local --verbose -n3
 
 This will fetch all the latest data items and save them in the clearly-local/
 directory using a single process for fetching.
+
+
+Basic tests can be run with the following command::
+
+    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin test clearcode
 
 
 TODO
