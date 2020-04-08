@@ -49,6 +49,7 @@ setup(
         'django',
         'psycopg2',
         'requests',
+        'packageurl-python',
     ],
     entry_points={
         'console_scripts': [

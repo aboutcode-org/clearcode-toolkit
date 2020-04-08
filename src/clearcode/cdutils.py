@@ -30,6 +30,7 @@ from urllib.parse import parse_qs
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
+from packageurl import PackageURL
 import attr
 import click
 import requests
@@ -172,6 +173,24 @@ class Coordinate(object):
             base_url=base_api_url or self.base_api_url,
             **self.to_dict())
         return '{base_url}/definitions?{qs}'.format(**locals())
+
+    def to_purl(self):
+        return PackageURL(
+            type=self.type,
+            namespace=self.namespace,
+            name=self.name,
+            version=self.revision,
+        ).to_string()
+
+    @classmethod
+    def from_purl(cls, purl):
+        p = PackageURL.from_string(purl)
+        return cls(
+            type=p.type,
+            namespace=p.namespace,
+            name=p.name,
+            revision=p.version,
+        )
 
 
 def get_coordinates(data_dir):
