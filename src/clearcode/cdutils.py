@@ -30,9 +30,9 @@ from urllib.parse import parse_qs
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
-from packageurl import PackageURL
 import attr
 import click
+from packageurl import PackageURL
 import requests
 
 
@@ -43,6 +43,37 @@ ClearlyDefined utlities.
 TRACE_FETCH = False
 TRACE = False
 TRACE_DEEP = False
+
+
+PACKAGE_TYPES_BY_CD_TYPE = {
+    'crate': 'cargo',
+    'deb': 'deb',
+    'debsrc': 'deb',
+    # Currently used only for maven packages
+    'sourcearchive': 'maven',
+    'maven': 'maven',
+    'composer': 'composer',
+    # Currently used only for Github repo/packages
+    'git': 'github',
+    'pod': 'pod',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'gem',
+}
+
+
+PACKAGE_TYPES_BY_PURL_TYPE = {
+    'cargo': 'crate',
+    'deb': 'deb',
+    'maven': 'maven',
+    'composer': 'composer',
+    'github': 'git',
+    'pod': 'pod',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'gem',
+    'npm': 'npm',
+}
 
 
 @attr.s(slots=True)
@@ -175,8 +206,9 @@ class Coordinate(object):
         return '{base_url}/definitions?{qs}'.format(**locals())
 
     def to_purl(self):
+        package_type = PACKAGE_TYPES_BY_CD_TYPE[self.type]
         return PackageURL(
-            type=self.type,
+            type=package_type,
             namespace=self.namespace,
             name=self.name,
             version=self.revision,
@@ -185,8 +217,12 @@ class Coordinate(object):
     @classmethod
     def from_purl(cls, purl):
         p = PackageURL.from_string(purl)
+        package_type = p.type
+        if package_type not in PACKAGE_TYPES_BY_PURL_TYPE:
+            raise Exception('Package type is not supported by ClearlyDefined: {}'.format(package_type))
+        package_type = PACKAGE_TYPES_BY_PURL_TYPE[package_type]
         return cls(
-            type=p.type,
+            type=package_type,
             namespace=p.namespace,
             name=p.name,
             revision=p.version,
