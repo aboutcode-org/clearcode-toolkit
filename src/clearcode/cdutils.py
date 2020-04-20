@@ -76,6 +76,22 @@ PACKAGE_TYPES_BY_PURL_TYPE = {
 }
 
 
+PROVIDERS_BY_PURL_TYPE = {
+    'cargo': 'cratesio',
+    'deb': 'debian',
+    'maven': 'mavencentral',
+    'composer': 'packagist',
+    # Currently used only for Github repo/packages
+    'git': 'github',
+    'github': 'github',
+    'pod': 'cocoapods',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'rubygem',
+    'npm': 'npmjs',
+}
+
+
 @attr.s(slots=True)
 class Coordinate(object):
     """
@@ -221,8 +237,11 @@ class Coordinate(object):
         if package_type not in PACKAGE_TYPES_BY_PURL_TYPE:
             raise Exception('Package type is not supported by ClearlyDefined: {}'.format(package_type))
         package_type = PACKAGE_TYPES_BY_PURL_TYPE[package_type]
+        # TODO: Have way to set other providers?
+        provider = PROVIDERS_BY_PURL_TYPE[package_type]
         return cls(
             type=package_type,
+            provider=provider,
             namespace=p.namespace,
             name=p.name,
             revision=p.version,
