@@ -236,7 +236,6 @@ def db_saver(content, blob_path, **kwargs):
     if not created:
         if cditem.content != compressed and cditem.last_modified_date < timezone.now():
             cditem.content = compressed
-            cditem.last_modified_date = timezone.now()
             cditem.save()
             if TRACE:
                 print('Updating content for:', blob_path)
