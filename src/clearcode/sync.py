@@ -231,23 +231,20 @@ def db_saver(content, blob_path, **kwargs):
     from clearcode import models
 
     compressed = compress(content)
-    try:
-        cditem = models.CDitem.objects.get(path=blob_path)
-        if cditem.content != compressed:
+
+    cditem, created = models.CDitem.objects.get_or_create(path=blob_path)
+    if not created:
+        if cditem.content != compressed and cditem.last_modified_date < timezone.now():
             cditem.content = compressed
-            cditem.last_modified_date = timezone.now()
             cditem.save()
             if TRACE:
                 print('Updating content for:', blob_path)
         else:
             return 0
-
-    except models.CDitem.DoesNotExist:
-        cditem = models.CDitem(path=blob_path, content=compressed)
-        cditem.save()
+    else:
         if TRACE:
             print('Adding content for:', blob_path)
-
+    
     return len(compressed)
 
 
