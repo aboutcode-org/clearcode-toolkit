@@ -1,0 +1,13 @@
+dist: xenial
+language: python
+python: "3.6"
+
+addons:
+  postgresql: "10"
+
+install:
+  - ./createdb.sh
+  - ./configure
+  - ./manage.py migrate
+
+script: ./manage.py test clearcode.tests 
