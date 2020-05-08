@@ -18,11 +18,10 @@
 # limitations under the License.
 import base64
 
-from django.conf.urls import url, include
+from django.conf.urls import include, url
+from rest_framework import routers
 from rest_framework import serializers
 from rest_framework import viewsets
-from rest_framework import routers
-from django_filters.rest_framework import DjangoFilterBackend
 
 from clearcode.models import CDitem
 
@@ -41,7 +40,7 @@ class CDitemContentFieldSerializer(serializers.Field):
 
 class CDitemSerializer(serializers.HyperlinkedModelSerializer):
     """
-    Custom Serialzier used to serialize the CDitem model
+    Custom Serializer used to serialize the CDitem model
     """
     content = CDitemContentFieldSerializer(required=False)
     class Meta:

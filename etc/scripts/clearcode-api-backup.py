@@ -176,24 +176,24 @@ if __name__ == '__main__':
         description='clearcode data backup using the clearcode API',
     )
     parser.add_argument(
-        '--api_root_url',
+        '--api-root-url',
         help='clearcode API endpoints root URL.',
         default='http://127.0.0.1:8000/api/',
     )
     parser.add_argument(
-        'last_modified_date',
+        '--last-modified-date',
         help='Limit the backup to object created/modified after that date. Format: "YYYY-MM-DD"',
+        required=True,
     )
     args = parser.parse_args()
 
     extra_payload = {}
-    if args.last_modified_date:
-        try:
-            datetime.strptime(args.last_modified_date, '%Y-%m-%d')
-        except ValueError:
-            print('Incorrect last_modified_date format. Expected YYYY-MM-DD')
-            sys.exit(1)
-        extra_payload['last_modified_date'] = args.last_modified_date
+    try:
+        datetime.strptime(args.last_modified_date, '%Y-%m-%d')
+    except ValueError:
+        print('Incorrect last_modified_date format. Expected YYYY-MM-DD')
+        sys.exit(1)
+    extra_payload['last_modified_date'] = args.last_modified_date
 
     print('Starting backup from {}'.format(args.api_root_url))
     run_api_backup(args.api_root_url, extra_payload)

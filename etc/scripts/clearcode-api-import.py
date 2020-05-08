@@ -40,7 +40,6 @@ import logging
 import sys
 from datetime import datetime
 from os.path import abspath, dirname, join
-
 from collections import defaultdict
 
 try:
@@ -110,33 +109,23 @@ if __name__ == '__main__':
         description='clearcode data import using the clearcode API',
     )
     parser.add_argument(
-        '--clearcode_target_api_url',
-        help='clearcode target instance API endpoints root URL. https://hostname/api/v2/',
-        default=os.environ.get('CLEARCODE_TARGET_API_URL'),
+        '--clearcode-target-api-url',
+        help='clearcode target instance API endpoints root URL. http://hostname/api/',
+        default='http://127.0.0.1:8000/api/',
     )
     parser.add_argument(
-        '--backup_directory',
+        '--backup-directory',
         help='Path of the backup directory created by clearcode-api-backup.py script',
+        required=True,
     )
     args = parser.parse_args()
     
     if not args.clearcode_target_api_url:
         print('A clearcode target instance API endpoints root URL is required.\n'
-              'Provide one using the --clearcode_target_api_url argument '
-              'or set it in a CLEARCODE_TARGET_API_URL environment variable.')
+              'Provide one using the --clearcode-target-api-url argument.')
         sys.exit(1)
     
     backup_directory = args.backup_directory
-    if not backup_directory:
-        backups = sorted(path for path in os.listdir('.') if path.startswith('clearcode_backup'))
-        if not backups:
-            print('Backup directory not found. Provide one using the --backup_directory argument.')
-            sys.exit(1)
-        backup_directory = backups[-1]
-        print('Latest backup directory found as "{}".'.format(backup_directory))
-        proceed = input('Would you like to proceed with that directory? [Y/n] ')
-        if proceed not in ['y', 'Y', 'yes', 'Yes']:
-            sys.exit(0)
     
     if not backup_directory.startswith('/'):
         backup_directory = join(abspath(dirname(__file__)), backup_directory)
