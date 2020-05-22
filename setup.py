@@ -49,11 +49,13 @@ setup(
         'django',
         'psycopg2',
         'requests',
+        'ansible',
         'packageurl-python',
     ],
     entry_points={
         'console_scripts': [
             'clearsync = clearcode.sync:cli',
+            'clearload = clearcode.load:cli',
         ],
     },
 )
