@@ -49,7 +49,7 @@ setup(
         'django',
         'psycopg2',
         'requests',
-        'ansible',
+        'djangorestframework',
     ],
     entry_points={
         'console_scripts': [
