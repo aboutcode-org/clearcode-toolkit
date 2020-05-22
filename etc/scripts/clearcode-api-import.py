@@ -128,7 +128,8 @@ if __name__ == '__main__':
     backup_directory = args.backup_directory
     
     if not backup_directory.startswith('/'):
-        backup_directory = join(abspath(dirname(__file__)), backup_directory)
+        cwd = os.getcwd()
+        backup_directory = abspath(join(cwd, backup_directory))
 
     if not os.path.exists(backup_directory):
         print('Directory "{}" does not exists.'.format(backup_directory))
