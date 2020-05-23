@@ -92,6 +92,12 @@ PROVIDERS_BY_PURL_TYPE = {
 }
 
 
+QUALIFIERS_BY_CD_TYPE = {
+    'sourcearchive': {'classifier': 'sources'},
+    'debsrc': {'type': 'source'}
+}
+
+
 @attr.s(slots=True)
 class Coordinate(object):
     """
@@ -160,8 +166,8 @@ class Coordinate(object):
 
         """
         pth = pth.strip('/')
-        root = root.strip('/')
         if root and root in pth:
+            root = root.strip('/')
             _, _, pth = pth.partition(root)
 
         segments = pth.strip('/').split('/')
@@ -171,7 +177,8 @@ class Coordinate(object):
             # /maven/mavencentral/io.dropwizard/dropwizard/revision/2.0.0-rc13/tool/scancode/3.2.2.json
             start = segments[:4]
             version = segments[5]
-            version, _, _ = version.rpartition('.json')
+            if version.endswith('.json'):
+                version, _, _ = version.rpartition('.json')
             segments = start + [version]
         else:
             # plain API paths do not have a /revision/ segment
@@ -222,23 +229,76 @@ class Coordinate(object):
         return '{base_url}/definitions?{qs}'.format(**locals())
 
     def to_purl(self):
-        package_type = PACKAGE_TYPES_BY_CD_TYPE[self.type]
+        """
+        Return a PackageURL string containing this Coordinate's information
+
+        >>> expected = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13'
+        >>> test  = Coordinate('maven', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13').to_purl()
+        >>> assert expected == test
+
+        >>> expected = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13?classifier=sources'
+        >>> test  = Coordinate('sourcearchive', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13').to_purl()
+        >>> assert expected == test
+
+        >>> expected = 'pkg:deb/gedit-plugins@3.34.0-3?type=source'
+        >>> test  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3').to_purl()
+        >>> assert expected == test
+        """
+        converted_package_type = PACKAGE_TYPES_BY_CD_TYPE[self.type]
+
+        namespace = ''
+        if self.namespace != '-':
+            namespace = self.namespace
+
+        qualifiers = {}
+        if self.type in ('debsrc', 'sourcearchive',):
+            qualifiers = QUALIFIERS_BY_CD_TYPE[self.type]
+
         return PackageURL(
-            type=package_type,
-            namespace=self.namespace,
+            type=converted_package_type,
+            namespace=namespace,
             name=self.name,
             version=self.revision,
+            qualifiers=qualifiers,
         ).to_string()
 
     @classmethod
     def from_purl(cls, purl):
+        """
+        Return a Coordinate containing the information from PackageURL `purl`
+
+        >>> expected  = Coordinate('maven', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13')
+        >>> purl = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+
+        >>> expected  = Coordinate('sourcearchive', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13')
+        >>> purl = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13?classifier=sources'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+
+        >>> expected  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3')
+        >>> purl = 'pkg:deb/gedit-plugins@3.34.0-3?type=source'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+        """
         p = PackageURL.from_string(purl)
+
         package_type = p.type
         if package_type not in PACKAGE_TYPES_BY_PURL_TYPE:
             raise Exception('Package type is not supported by ClearlyDefined: {}'.format(package_type))
-        package_type = PACKAGE_TYPES_BY_PURL_TYPE[package_type]
-        # TODO: Have way to set other providers?
-        provider = PROVIDERS_BY_PURL_TYPE[package_type]
+        # Handle the source types of Maven and Debian packages
+        if package_type == 'maven' and p.qualifiers.get('classifier', '') == 'sources':
+            package_type = 'sourcearchive'
+            provider = 'mavencentral'
+        elif package_type == 'deb' and p.qualifiers.get('type', '') == 'source':
+            package_type = 'debsrc'
+            provider = 'debian'
+        else:
+            package_type = PACKAGE_TYPES_BY_PURL_TYPE[package_type]
+            # TODO: Have way to set other providers?
+            provider = PROVIDERS_BY_PURL_TYPE[package_type]
+
         return cls(
             type=package_type,
             provider=provider,
