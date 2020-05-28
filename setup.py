@@ -49,7 +49,7 @@ setup(
         'django',
         'psycopg2',
         'requests',
-        'ansible',
+        'djangorestframework',
         'packageurl-python',
     ],
     entry_points={

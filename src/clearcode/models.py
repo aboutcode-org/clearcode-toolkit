@@ -19,6 +19,7 @@
 
 import gzip
 import json
+import uuid
 
 from django.db import models
 
@@ -79,6 +80,12 @@ class CDitemQuerySet(models.QuerySet):
     def mappable_scancode_harvests(self):
         return self.mappable().scancode_harvests().known_package_types()
 
+    def modified_after(self, date):
+        """
+        Limit the QuerySet to CDitems that were modified after a given `date`.
+        """
+        return self.filter(last_modified_date__gt=date)
+
 
 class CDitem(models.Model):
     """
@@ -88,6 +95,12 @@ class CDitem(models.Model):
     """
     path = models.CharField(primary_key=True, max_length=2048,
         help_text='Path to the original file in the ClearlyDefined file storage.'
+    )
+
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
     )
 
     content = models.BinaryField(

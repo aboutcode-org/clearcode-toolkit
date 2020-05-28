@@ -34,6 +34,11 @@ DATABASES = dict(
     )
 )
 
+# TODO: Add some sort of api auth if you expose to the world
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+ROOT_URLCONF = 'clearcode.api'
+
 # To disable running migration on each run, enable a fake migration below
 # class FakeMigrations(dict):
 #     """
@@ -48,9 +53,49 @@ DATABASES = dict(
 #         return True
 # MIGRATION_MODULES = dbconf.FakeMigrations()
 
-
 INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
     'clearcode',
+    'rest_framework',
+]
+
+MIDDLEWARE = (
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+)
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100,
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        }
+    }
 ]
 
 # SECURITY WARNING: keep the secret key used in a production webapp!

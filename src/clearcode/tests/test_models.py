@@ -1,11 +1,38 @@
 #
 # Copyright (c) 2020 by nexB, Inc. http://www.nexb.com/ - All rights reserved.
 #
+import datetime
 
 from django.test import TestCase
 from django.utils import timezone
 
 from clearcode.models import CDitem
+
+
+class CDitemManagerModifiedAfterTestCase(TestCase):
+
+    def setUp(self):
+        self.cditem0 = CDitem.objects.create(path='npm/name/version')
+
+    def test_modified_after_1_day_old(self):
+        test_date = datetime.datetime.now() - datetime.timedelta(days=1)
+        self.assertIsNotNone(CDitem.objects.modified_after(test_date))
+        self.assertEqual(1, len(CDitem.objects.modified_after(test_date)))
+    
+    def test_modified_after_1_week_old(self):
+        test_date = datetime.datetime.now() - datetime.timedelta(days=7)
+        self.assertIsNotNone(CDitem.objects.modified_after(test_date))
+        self.assertEqual(1, len(CDitem.objects.modified_after(test_date)))
+
+    def test_modified_after_1_day_new(self):
+        test_date = datetime.datetime.now() + datetime.timedelta(days=1)
+        self.assertIsNotNone(CDitem.objects.modified_after(test_date))
+        self.assertEqual(0, len(CDitem.objects.modified_after(test_date)))
+    
+    def test_modified_after_1_week_new(self):
+        test_date = datetime.datetime.now() + datetime.timedelta(days=7)
+        self.assertIsNotNone(CDitem.objects.modified_after(test_date))
+        self.assertEqual(0, len(CDitem.objects.modified_after(test_date)))
 
 
 class CDitemManagerTestCase(TestCase):
