@@ -240,7 +240,7 @@ class Coordinate(object):
         >>> test  = Coordinate('sourcearchive', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13').to_purl()
         >>> assert expected == test
 
-        >>> expected = 'pkg:deb/gedit-plugins@3.34.0-3?arch=source'
+        >>> expected = 'pkg:deb/debian/gedit-plugins@3.34.0-3?arch=source'
         >>> test  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3').to_purl()
         >>> assert expected == test
         """
@@ -249,6 +249,9 @@ class Coordinate(object):
         namespace = ''
         if self.namespace != '-':
             namespace = self.namespace
+
+        if self.provider == 'debian':
+            namespace = 'debian'
 
         qualifiers = {}
         if self.type in ('debsrc', 'sourcearchive',):
@@ -277,8 +280,8 @@ class Coordinate(object):
         >>> test = Coordinate.from_purl(purl)
         >>> assert expected == test
 
-        >>> expected  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3')
-        >>> purl = 'pkg:deb/gedit-plugins@3.34.0-3?arch=source'
+        >>> expected  = Coordinate('debsrc', 'debian', 'debian', 'gedit-plugins', '3.34.0-3')
+        >>> purl = 'pkg:deb/debian/gedit-plugins@3.34.0-3?arch=source'
         >>> test = Coordinate.from_purl(purl)
         >>> assert expected == test
         """
