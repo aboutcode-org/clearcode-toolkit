@@ -32,6 +32,7 @@ from urllib.parse import unquote_plus
 
 import attr
 import click
+from packageurl import PackageURL
 import requests
 
 
@@ -42,6 +43,59 @@ ClearlyDefined utlities.
 TRACE_FETCH = False
 TRACE = False
 TRACE_DEEP = False
+
+
+PACKAGE_TYPES_BY_CD_TYPE = {
+    'crate': 'cargo',
+    'deb': 'deb',
+    'debsrc': 'deb',
+    # Currently used only for maven packages
+    'sourcearchive': 'maven',
+    'maven': 'maven',
+    'composer': 'composer',
+    # Currently used only for Github repo/packages
+    'git': 'github',
+    'pod': 'pod',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'gem',
+}
+
+
+PACKAGE_TYPES_BY_PURL_TYPE = {
+    'cargo': 'crate',
+    'deb': 'deb',
+    'maven': 'maven',
+    'composer': 'composer',
+    'github': 'git',
+    'pod': 'pod',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'gem',
+    'npm': 'npm',
+}
+
+
+PROVIDERS_BY_PURL_TYPE = {
+    'cargo': 'cratesio',
+    'deb': 'debian',
+    'maven': 'mavencentral',
+    'composer': 'packagist',
+    # Currently used only for Github repo/packages
+    'git': 'github',
+    'github': 'github',
+    'pod': 'cocoapods',
+    'nuget': 'nuget',
+    'pypi': 'pypi',
+    'gem': 'rubygem',
+    'npm': 'npmjs',
+}
+
+
+QUALIFIERS_BY_CD_TYPE = {
+    'sourcearchive': {'classifier': 'sources'},
+    'debsrc': {'arch': 'source'}
+}
 
 
 @attr.s(slots=True)
@@ -59,6 +113,8 @@ class Coordinate(object):
     revision = attr.ib()
 
     def __attrs_post_init__(self, *args, **kwargs):
+        if self.provider == 'debian':
+            self.namespace = 'debian'
         if not self.namespace:
             self.namespace = '-'
 
@@ -112,8 +168,8 @@ class Coordinate(object):
 
         """
         pth = pth.strip('/')
-        root = root.strip('/')
         if root and root in pth:
+            root = root.strip('/')
             _, _, pth = pth.partition(root)
 
         segments = pth.strip('/').split('/')
@@ -123,7 +179,8 @@ class Coordinate(object):
             # /maven/mavencentral/io.dropwizard/dropwizard/revision/2.0.0-rc13/tool/scancode/3.2.2.json
             start = segments[:4]
             version = segments[5]
-            version, _, _ = version.rpartition('.json')
+            if version.endswith('.json'):
+                version, _, _ = version.rpartition('.json')
             segments = start + [version]
         else:
             # plain API paths do not have a /revision/ segment
@@ -172,6 +229,88 @@ class Coordinate(object):
             base_url=base_api_url or self.base_api_url,
             **self.to_dict())
         return '{base_url}/definitions?{qs}'.format(**locals())
+
+    def to_purl(self):
+        """
+        Return a PackageURL string containing this Coordinate's information
+
+        >>> expected = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13'
+        >>> test  = Coordinate('maven', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13').to_purl()
+        >>> assert expected == test
+
+        >>> expected = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13?classifier=sources'
+        >>> test  = Coordinate('sourcearchive', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13').to_purl()
+        >>> assert expected == test
+
+        >>> expected = 'pkg:deb/debian/gedit-plugins@3.34.0-3?arch=source'
+        >>> test  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3').to_purl()
+        >>> assert expected == test
+        """
+        converted_package_type = PACKAGE_TYPES_BY_CD_TYPE[self.type]
+
+        namespace = ''
+        if self.namespace != '-':
+            namespace = self.namespace
+
+        if self.provider == 'debian':
+            namespace = 'debian'
+
+        qualifiers = {}
+        if self.type in ('debsrc', 'sourcearchive',):
+            qualifiers = QUALIFIERS_BY_CD_TYPE[self.type]
+
+        return PackageURL(
+            type=converted_package_type,
+            namespace=namespace,
+            name=self.name,
+            version=self.revision,
+            qualifiers=qualifiers,
+        ).to_string()
+
+    @classmethod
+    def from_purl(cls, purl):
+        """
+        Return a Coordinate containing the information from PackageURL `purl`
+
+        >>> expected  = Coordinate('maven', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13')
+        >>> purl = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+
+        >>> expected  = Coordinate('sourcearchive', 'mavencentral', 'io.dropwizard', 'dropwizard', '2.0.0-rc13')
+        >>> purl = 'pkg:maven/io.dropwizard/dropwizard@2.0.0-rc13?classifier=sources'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+
+        >>> expected  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3')
+        >>> purl = 'pkg:deb/debian/gedit-plugins@3.34.0-3?arch=source'
+        >>> test = Coordinate.from_purl(purl)
+        >>> assert expected == test
+        """
+        p = PackageURL.from_string(purl)
+
+        package_type = p.type
+        if package_type not in PACKAGE_TYPES_BY_PURL_TYPE:
+            raise Exception('Package type is not supported by ClearlyDefined: {}'.format(package_type))
+        # Handle the source types of Maven and Debian packages
+        if package_type == 'maven' and p.qualifiers.get('classifier', '') == 'sources':
+            package_type = 'sourcearchive'
+            provider = 'mavencentral'
+        elif package_type == 'deb' and p.qualifiers.get('arch', '') == 'source':
+            package_type = 'debsrc'
+            provider = 'debian'
+        else:
+            package_type = PACKAGE_TYPES_BY_PURL_TYPE[package_type]
+            # TODO: Have way to set other providers?
+            provider = PROVIDERS_BY_PURL_TYPE[package_type]
+
+        return cls(
+            type=package_type,
+            provider=provider,
+            namespace=p.namespace,
+            name=p.name,
+            revision=p.version,
+        )
 
 
 def get_coordinates(data_dir):

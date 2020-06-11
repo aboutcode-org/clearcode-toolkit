@@ -50,6 +50,7 @@ setup(
         'psycopg2',
         'requests',
         'djangorestframework',
+        'packageurl-python',
     ],
     entry_points={
         'console_scripts': [
