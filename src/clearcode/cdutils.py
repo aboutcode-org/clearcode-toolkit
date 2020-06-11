@@ -113,6 +113,8 @@ class Coordinate(object):
     revision = attr.ib()
 
     def __attrs_post_init__(self, *args, **kwargs):
+        if self.provider == 'debian':
+            self.namespace = 'debian'
         if not self.namespace:
             self.namespace = '-'
 
@@ -280,7 +282,7 @@ class Coordinate(object):
         >>> test = Coordinate.from_purl(purl)
         >>> assert expected == test
 
-        >>> expected  = Coordinate('debsrc', 'debian', 'debian', 'gedit-plugins', '3.34.0-3')
+        >>> expected  = Coordinate('debsrc', 'debian', '', 'gedit-plugins', '3.34.0-3')
         >>> purl = 'pkg:deb/debian/gedit-plugins@3.34.0-3?arch=source'
         >>> test = Coordinate.from_purl(purl)
         >>> assert expected == test
