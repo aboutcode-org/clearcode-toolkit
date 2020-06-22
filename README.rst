@@ -38,8 +38,8 @@ the JSON data fetched from the ClearlyDefined API are stored as gzipped-compress
 JSON as blobs in a PosgresSQL database keyed by the file path.
 That path is the same as the path used in the ClearlyDefined "blob" storage on Azure.
 You can also save these as real files gzipped-compressed JSON files (with the caveat
-that this will make the filesystem crumble and this may require a specila mkfs
-invocation to create a filesystems with enough inodes.
+that this will make the filesystem crumble and this may require a special mkfs
+invocation to create a filesystems with enough inodes.)
 
 
 Requirements
@@ -49,19 +49,41 @@ To run this tool, you need:
 
 - a POSIX OS (Linux)
 - Python 3.6+
-- PosgresSQL 9.5+
+- PosgresSQL 9.5+ if you want to handle a large dataset
 - plenty of space, bandwidth and CPU.
 
 
-Quick start
------------
+Quick start using a simple file storage
+---------------------------------------
+
+Run these commands to get started::
+
+    $ source configure
+    $ clearsync --help
+
+For instance, try this command::
+
+    $ clearsync --output-dir clearly-local --verbose -n3
+
+This will fetch continuously everything (definitions, harvests, etc). from 
+ClearlyDefined using three processes in parallel and save the output as JSON
+files in the clearly-local directory.
+
+You can abort this at anytime with Ctrl+C.
+
+
+WARNING: this may ceate too many files and directory for your file system sanity.
+Consider using the PostgreSQL storage instead.
+ 
+
+Quick start using a database storage
+------------------------------------
 
 First create a PostgreSQL database.
 This requires sudo access. This is tested on Debian and Ubuntu.
 ::
 
     $ ./createdb.sh
-
 
 
 Then run these commands to get started::
@@ -72,27 +94,86 @@ Then run these commands to get started::
 
 For instance, try this command::
 
-    $ clearsync --save-to-db  --output-dir clearly-local --verbose -n3
+    $ clearsync --save-to-db  --verbose -n3
 
-This will fetch all the latest data items and save them in the clearly-local/
-directory as well as the "clearcode" PostgresDB using three processes for fetching.
-
-
-Or this command::
-
-    $ clearsync --output-dir clearly-local --verbose -n3
-
-This will fetch all the latest data items and save them in the clearly-local/
-directory using a single process for fetching.
+This will fetch all the latest data items and save them in the "clearcode" 
+PostgresDB using three processes in parallel for fetching.
+You can abort this at anytime with Ctrl+C.
 
 
 Basic tests can be run with the following command::
 
-    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin test clearcode
+    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin test clearcode --verbosity=2
 
 
-TODO
-----
 
-- Add unit and integration tests
-- Add export capability for delta/increments
+Using the Rest API and webserver to import and export items from ClearCode
+--------------------------------------------------------------------------
+
+This assumes you have already populated your database even partially.
+In a first shell, start the webserver::
+
+    $ source configure
+    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin runserver
+
+You can then visit the API at http://127.0.0.1:8000/api/
+
+In a second shell, you can run the command line API client tool to export data
+fetched from ClearlyDefined::
+
+    $ source configure
+    $ python etc/scripts/clearcode-api-backup.py \
+      --api-root-url http://127.0.0.1:8000/api/ \
+      --last-modified-date 2020-06-20
+
+    Starting backup from http://127.0.0.1:8000/api/
+    Collecting cditems...
+    821 total
+    [...........................................................................]
+    821 cditems collected.
+    Backup location: /etc/scripts/clearcode_backup_2020-06-23_00-30-22
+    Backup completed.
+
+The exported backup is saved as a single JSON file in a directory created for
+this run named with a timestamp such as clearcode_backup_2020-06-22_21-04-48.
+
+
+In that second shell, you can then run the command line API client tool to
+import data saved from the export/backup run above::
+
+    $ python etc/scripts/clearcode-api-import.py \
+      --clearcode-target-api-url http://127.0.0.1:8000/api/ \
+      --backup-directory etc/scripts/clearcode_backup_2020-06-23_00-30-22/
+
+    Importing objects from ../etc/scripts/clearcode_backup_2020-06-23_00-30-22 to http://127.0.0.1:8000/api/
+    Copying 821 cditems...........................................Copy completed.
+    Results saved in /etc/scripts/copy_results_2020-06-23_00-32-37.json
+
+This would likely something you would run on an isolated ClearCode DB that
+you want to keep current with items exported from a live replicating DB.
+
+Note that these tools have minimal external requirements: only the requests
+library and have been designed to be used as single files that can be copied
+around.
+
+See also for help on these two utilities::
+
+    $ python etc/scripts/clearcode-api-backup.py -h
+    $ python etc/scripts/clearcode-api-import.py -h
+
+
+Support
+-------
+
+Enter a ticket with bugs, issues or questions at
+https://github.com/nexB/clearcode-toolkit/
+
+And join us to chat on Gitter (also by IRC) at
+https://gitter.im/aboutcode-org/discuss
+
+
+License
+-------
+
+Apache-2.0
+
