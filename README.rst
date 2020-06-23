@@ -103,7 +103,7 @@ You can abort this at anytime with Ctrl+C.
 
 Basic tests can be run with the following command::
 
-    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin test clearcode --verbosity=2
+    $ ./manage.py test clearcode --verbosity=2
 
 
 
@@ -114,7 +114,7 @@ This assumes you have already populated your database even partially.
 In a first shell, start the webserver::
 
     $ source configure
-    $ DJANGO_SETTINGS_MODULE=clearcode.dbsettings django-admin runserver
+    $ ./manage.py runserver
 
 You can then visit the API at http://127.0.0.1:8000/api/
 
@@ -170,6 +170,16 @@ https://github.com/nexB/clearcode-toolkit/
 
 And join us to chat on Gitter (also by IRC) at
 https://gitter.im/aboutcode-org/discuss
+
+
+Release TODO
+------------
+
+- Merge in master and tag release.
+- pip install wheel twine
+- python setup.py release
+- twine upload dist/*
+
 
 
 License
