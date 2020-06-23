@@ -40,8 +40,12 @@ setup(
         'Topic :: Utilities',
     ],
     keywords=[
-        'open source', 'scan', 'license', 'package',
+        'open source',
+        'scan',
+        'license',
+        'package',
         'clearlydefined',
+        'scancode', 
     ],
     install_requires=[
         'attrs',
