@@ -177,9 +177,9 @@ Release TODO
 
 - Merge in master and tag release.
 - pip install wheel twine
+- rm dist/*
 - python setup.py release
 - twine upload dist/*
-
 
 
 License
