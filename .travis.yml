@@ -10,4 +10,4 @@ install:
   - ./configure
   - ./manage.py migrate
 
-script: ./manage.py test clearcode.tests 
+script: ./manage.py test clearcode.tests --verbosity=2

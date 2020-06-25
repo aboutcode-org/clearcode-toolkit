@@ -82,7 +82,6 @@ known_types = (
 )
 
 
-
 # each process gets its own session
 session = requests.Session()
 
@@ -244,7 +243,7 @@ def db_saver(content, blob_path, **kwargs):
     else:
         if TRACE:
             print('Adding content for:', blob_path)
-    
+
     return len(compressed)
 
 
@@ -319,6 +318,7 @@ class Cache(object):
     """
     A caching object for etags and checksums to avoid refetching things.
     """
+
     def __init__(self, max_size=100 * 1000):
         self.etags_cache = {}
         self.checksums_cache = {}
@@ -356,11 +356,13 @@ class Cache(object):
         """
         Trim the cache to its max size.
         """
+
         def _resize(cache):
             extra_items = len(cache) - self.max_size
             if extra_items > 0:
                 for ei in list(cache)[:extra_items]:
                     del cache[ei]
+
         _resize(self.etags_cache)
         _resize(self.checksums_cache)
 
@@ -434,6 +436,10 @@ class Cache(object):
     default=0,
     help='Set the maximum number of definitions to fetch.')
 
+@click.option('--only-definitions',
+    is_flag=True,
+    help='Only fetch definitions and no other data item.')
+
 @click.option('--log-file',
     type=click.Path(), default=None,
     help='Path to a file where to log fetched paths, one per line. '
@@ -443,19 +449,20 @@ class Cache(object):
     is_flag=True,
     help='Display more verbose progress messages.')
 
-
 @click.help_option('-h', '--help')
-
 def cli(output_dir=None, save_to_db=False,
         base_api_url='https://api.clearlydefined.io',
         wait=60, processes=1, unsorted=False,
-        log_file=None, max_def=0, session=session, verbose=False, *arg, **kwargs):
+        log_file=None, max_def=0, only_definitions=False, session=session,
+        verbose=False, *arg, **kwargs):
     """
     Fetch the latest definitions and harvests from ClearlyDefined and save these
     as gzipped JSON either as as files in output-dir or in a PostgreSQL
     database. Loop forever after waiting some seconds between each cycles.
     """
     assert output_dir or save_to_db, 'You must select at least one of the --output-dir or --save-to-db options.'
+
+    fetch_harvests = not only_definitions
 
     cycles = 0
     total_defs_count = 0
@@ -474,7 +481,8 @@ def cli(output_dir=None, save_to_db=False,
         log_file_fn = open(log_file, 'a')
 
     try:
-        harvest_fetchers = pool.Pool(processes=processes, maxtasksperchild=10000)
+        if fetch_harvests:
+            harvest_fetchers = pool.Pool(processes=processes, maxtasksperchild=10000)
 
         # loop forever. Complete one loop once we have fetched all the latest
         # items and we are not getting new pages (based on etag)
@@ -512,20 +520,21 @@ def cli(output_dir=None, save_to_db=False,
 
                     if TRACE: print('  Saved def for:', coordinate)
 
-                    kwds = dict(
-                        coordinate=coordinate,
-                        output_dir=output_dir,
-                        save_to_db=save_to_db,
-                        # that's a copy of the cache, since we are in some
-                        # subprocess, the data is best not shared to avoid
-                        # any sync issue
-                        cache=cache.copy(),
-                        verbose=verbose)
+                    if fetch_harvests:
+                        kwds = dict(
+                            coordinate=coordinate,
+                            output_dir=output_dir,
+                            save_to_db=save_to_db,
+                            # that's a copy of the cache, since we are in some
+                            # subprocess, the data is best not shared to avoid
+                            # any sync issue
+                            cache=cache.copy(),
+                            verbose=verbose)
 
-                    harvest_fetchers.apply_async(
-                        fetch_and_save_harvests,
-                        kwds=kwds,
-                        callback=cache.add_args)
+                        harvest_fetchers.apply_async(
+                            fetch_and_save_harvests,
+                            kwds=kwds,
+                            callback=cache.add_args)
 
                     if max_def and max_def >= cycle_defs_count:
                         break

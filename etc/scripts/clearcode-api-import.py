@@ -79,7 +79,9 @@ def run_api_copy(api_root_url, backup_directory):
 
         print('Copying {} {}...'.format(len(source_objects), endpoint))
         endpoint_results = defaultdict(list)
-        for data in source_objects:
+        for i, data in enumerate(source_objects):
+            if not (i % 10):
+                print('.', end='', flush=True)
             object_api_url = '{}{}/'.format(api_endpoint_url, data['uuid'])
             response = requests.get(object_api_url, headers=headers)
             object_exists = response.status_code == 200
@@ -89,7 +91,7 @@ def run_api_copy(api_root_url, backup_directory):
                 if put_response.status_code == 200: # Updated
                     endpoint_results['updated'].append(data)
                 else:
-                    print('Update error:', put_response.json())
+                    print('Update error:', put_response and put_response.json() or repr(put_response.content))
                     endpoint_results['update_errors'].append({'data': data, 'error': put_response.json()})
 
             else:
@@ -99,7 +101,6 @@ def run_api_copy(api_root_url, backup_directory):
                 else:
                     print('Create error:', post_response.json())
                     endpoint_results['create_errors'].append({'data': data, 'error': post_response.json()})
-
         copy_results[endpoint] = endpoint_results
     return copy_results
 

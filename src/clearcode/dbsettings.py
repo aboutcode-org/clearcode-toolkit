@@ -30,7 +30,6 @@ DATABASES = dict(
         USER='clearcode',
         PASSWORD='cl34-u5er',
         ATOMIC_REQUESTS=True,
-        CONN_MAX_AGE=600,  # 10min lifetime connection
     )
 )
 
@@ -110,4 +109,7 @@ DEBUG = False
 # although not all choices may be available on all operating systems.
 # On Unix systems, a value of None will cause Django to use the same
 # timezone as the operating system.
-TIME_ZONE = None
+TIME_ZONE = 'UTC'
+
+STATIC_URL = '/static/'
+

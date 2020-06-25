@@ -18,13 +18,13 @@ from setuptools import setup
 
 setup(
     name='clearcode-toolkit',
-    version='0.0.2',
-    license='Apache-2.0 with ScanCode acknowledgment and others',
+    version='0.0.3',
+    license='Apache-2.0',
     description='ClearCode is a tool to sync ClearlyDefined data.',
     long_description='ClearCode is a tool to sync ClearlyDefined scans and curations.',
     author='nexB Inc. and others',
     author_email='info@aboutcode.org',
-    url='https://github.com/nexB/scancode-toolkit',
+    url='https://github.com/nexB/clearcode-toolkit',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -40,8 +40,12 @@ setup(
         'Topic :: Utilities',
     ],
     keywords=[
-        'open source', 'scan', 'license', 'package',
+        'open source',
+        'scan',
+        'license',
+        'package',
         'clearlydefined',
+        'scancode', 
     ],
     install_requires=[
         'attrs',
