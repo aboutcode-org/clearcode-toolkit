@@ -9,7 +9,7 @@ attrs==19.3.0             # via clearcode-toolkit (setup.py)
 certifi==2020.4.5.1       # via requests
 chardet==3.0.4            # via requests
 click==7.1.1              # via clearcode-toolkit (setup.py)
-django==3.0.5             # via clearcode-toolkit (setup.py), djangorestframework
+django==3.0.7             # via clearcode-toolkit (setup.py), djangorestframework
 djangorestframework==3.11.0  # via clearcode-toolkit (setup.py)
 idna==2.9                 # via requests
 psycopg2==2.8.5           # via clearcode-toolkit (setup.py)
