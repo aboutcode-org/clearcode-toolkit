@@ -536,10 +536,10 @@ def cli(output_dir=None, save_to_db=False,
                             kwds=kwds,
                             callback=cache.add_args)
 
-                    if max_def and max_def >= cycle_defs_count:
+                    if max_def and max_def <= cycle_defs_count:
                         break
 
-                if max_def and (max_def >= cycle_defs_count or max_def >= total_defs_count):
+                if max_def and (max_def <= cycle_defs_count or max_def <= total_defs_count):
                     break
 
             total_defs_count += cycle_defs_count
