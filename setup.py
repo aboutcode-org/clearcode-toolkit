@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import io
 from glob import glob
 from os.path import basename
@@ -36,7 +33,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Utilities',
     ],
     keywords=[
@@ -50,8 +47,8 @@ setup(
     install_requires=[
         'attrs',
         'click',
-        'django',
-        'psycopg2',
+        'django=>4.0.0',
+        'psycopg2-binary',
         'requests',
         'djangorestframework',
         'packageurl-python',
