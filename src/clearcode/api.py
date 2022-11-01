@@ -18,7 +18,8 @@
 # limitations under the License.
 import base64
 
-from django.conf.urls import include, url
+from django.urls import include
+from django.urls import re_path
 from rest_framework import routers
 from rest_framework import serializers
 from rest_framework import viewsets
@@ -76,5 +77,5 @@ router = routers.DefaultRouter()
 router.register(r'cditems', CDitemViewSet, 'cditems')
 
 urlpatterns = [
-    url('^api/', include((router.urls, 'api'))),
+    re_path('^api/', include((router.urls, 'api'))),
 ]
