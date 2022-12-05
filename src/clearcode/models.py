@@ -133,12 +133,7 @@ class CDitem(models.Model):
         """
         Return the data content deserialized from the content field.
         """
-        # The following commented line only works for Python 3
-        # return json.loads(gzip.decompress(self.content))
-
-        # This is a workaround for Python 2
-        from io import BytesIO
-        inbuffer = BytesIO(self.content)
-        with gzip.GzipFile(mode='rb', fileobj=inbuffer) as f:
-            read_data = f.read()
-        return json.loads(read_data)
+        uncompressed_content = gzip.decompress(self.content)
+        if not uncompressed_content:
+            uncompressed_content = {}
+        return json.loads(uncompressed_content)

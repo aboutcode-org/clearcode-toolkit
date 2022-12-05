@@ -18,7 +18,7 @@
 # limitations under the License.
 import base64
 
-from django.conf.urls import include, url
+from django.urls import include, re_path
 from rest_framework import routers
 from rest_framework import serializers
 from rest_framework import viewsets
@@ -28,7 +28,7 @@ from clearcode.models import CDitem
 
 class CDitemContentFieldSerializer(serializers.Field):
     """
-    Custom Field Serializer used to translate between Django ORM binary field and 
+    Custom Field Serializer used to translate between Django ORM binary field and
     base64-encoded string
     """
     def to_representation(self, obj):
@@ -36,7 +36,7 @@ class CDitemContentFieldSerializer(serializers.Field):
 
     def to_internal_value(self, data):
         return base64.b64decode(data)
-        
+
 
 class CDitemSerializer(serializers.HyperlinkedModelSerializer):
     """
@@ -76,5 +76,5 @@ router = routers.DefaultRouter()
 router.register(r'cditems', CDitemViewSet, 'cditems')
 
 urlpatterns = [
-    url('^api/', include((router.urls, 'api'))),
+    re_path('^api/', include((router.urls, 'api'))),
 ]
