@@ -135,5 +135,5 @@ class CDitem(models.Model):
         """
         uncompressed_content = gzip.decompress(self.content)
         if not uncompressed_content:
-            uncompressed_content = {}
+            uncompressed_content = '{}'
         return json.loads(uncompressed_content)
